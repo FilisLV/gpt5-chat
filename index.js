@@ -8,6 +8,11 @@ const app = express();
 app.use(cors({ origin: true }));
 app.use(express.json());
 
+app.get("/env-check", (req, res) => {
+  const v = process.env.OPENAI_API_KEY || "";
+  res.json({ hasKey: !!v, length: v.length });
+});
+
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 const sessions = new Map();
 
