@@ -1,70 +1,105 @@
-// index.js
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import OpenAI from "openai";
-import path from "path";
-import { fileURLToPath } from "url";
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>My GPT-5 Chat</title>
+  <style>
+    :root { --bg:#f7f7f7; --card:#fff; --muted:#666; }
+    *{box-sizing:border-box}
+    body{margin:0;background:var(--bg);font-family:system-ui,Arial}
+    .wrap{max-width:900px;margin:0 auto;padding:16px}
+    h1{font-size:18px;margin:8px 0 16px}
+    .toolbar{display:flex;gap:8px;margin-bottom:12px}
+    .toolbar button{padding:10px 12px;border:1px solid #ddd;background:#fff;border-radius:8px;cursor:pointer}
+    .log{background:var(--card);border:1px solid #eee;border-radius:12px;padding:12px;height:60vh;overflow:auto}
+    .msg{margin:8px 0;padding:10px;border-radius:10px;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+    .me{background:#eef2ff;border:1px solid #dbe4ff;align-self:flex-end}
+    .ai{background:#f8fafc;border:1px solid #eef2f7}
+    .row{display:flex;gap:8px;margin-top:12px}
+    textarea{flex:1;padding:10px;border-radius:10px;border:1px solid #ccc;min-height:56px}
+    button.send{padding:10px 14px;border-radius:10px;border:1px solid #ccc;background:#fff;cursor:pointer}
+    .muted{color:var(--muted);font-size:12px;margin-top:6px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>My GPT-5 Chat</h1>
+    <div class="toolbar">
+      <button id="newChat">New Chat</button>
+      <span class="muted" id="status">Ready</span>
+    </div>
+    <div class="log" id="log"></div>
 
-// Resolve __dirname in ESM
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+    <div class="row">
+      <textarea id="inp" placeholder="Type a message…"></textarea>
+      <button class="send" id="send">Send</button>
+    </div>
+  </div>
 
-// Env
-dotenv.config();
+  <script>
+    const log = document.getElementById('log');
+    const inp = document.getElementById('inp');
+    const statusEl = document.getElementById('status');
 
-// App
-const app = express();
-app.use(cors({ origin: true }));
-app.use(express.json());
+    let sessionId = localStorage.getItem('sessionId') || crypto.randomUUID();
+    localStorage.setItem('sessionId', sessionId);
 
-// Serve static files (so / loads chat.html, and CSS/JS next to it)
-app.use(express.static(__dirname));
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "chat.html"));
-});
+    function append(text, who) {
+      const d = document.createElement('div');
+      d.className = `msg ${who}`;
+      d.textContent = text;
+      log.appendChild(d);
+      log.scrollTop = log.scrollHeight;
+      return d;
+    }
 
-// Simple env check
-app.get("/env-check", (req, res) => {
-  const v = process.env.OPENAI_API_KEY || "";
-  res.json({ hasKey: !!v, length: v.length });
-});
+    async function send() {
+      const text = inp.value.trim();
+      if (!text) return;
+      append(text, 'me');
+      inp.value = '';
+      const aiEl = append('…', 'ai');
+      statusEl.textContent = 'Thinking…';
 
-// OpenAI + session memory
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-const sessions = new Map();
-function getHistory(id) {
-  if (!sessions.has(id)) {
-    sessions.set(id, [{ role: "system", content: "You are a helpful assistant." }]);
-  }
-  return sessions.get(id);
-}
+      // streaming endpoint (fallbacks to non-stream if you skip it)
+      const resp = await fetch('/chat-stream', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sessionId, userMessage: text })
+      });
 
-// Chat endpoint
-app.post("/chat", async (req, res) => {
-  try {
-    const { sessionId = "default", userMessage } = req.body || {};
-    if (!userMessage) return res.status(400).json({ error: "userMessage required" });
+      if (resp.ok && resp.headers.get('Content-Type')?.includes('text/event-stream')) {
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        aiEl.textContent = '';
+        while (true) {
+          const { value, done } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          for (const line of chunk.split('\n')) {
+            if (line.startsWith('data: ')) aiEl.textContent += line.slice(6);
+          }
+          log.scrollTop = log.scrollHeight;
+        }
+      } else {
+        const data = await resp.json();
+        aiEl.textContent = data.reply || data.error || 'Error';
+      }
+      statusEl.textContent = 'Ready';
+    }
 
-    const history = getHistory(sessionId);
-    history.push({ role: "user", content: userMessage });
-
-    const resp = await openai.chat.completions.create({
-      model: "gpt-5",
-      messages: history,
+    document.getElementById('send').onclick = send;
+    inp.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
     });
 
-    const answer = resp.choices[0].message;
-    history.push(answer);
-    res.json({ reply: answer.content });
-  } catch (err) {
-    const status = err?.status ?? 500;
-    const msg = err?.error?.message || err?.message || "Unknown error";
-    console.error("OpenAI error:", status, msg);
-    res.status(status).json({ error: msg });
-  }
-});
-
-// Railway will inject PORT
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Server listening on :${PORT}`));
+    document.getElementById('newChat').onclick = () => {
+      sessionId = crypto.randomUUID();
+      localStorage.setItem('sessionId', sessionId);
+      log.innerHTML = '';
+      append('New chat started.', 'ai');
+    };
+  </script>
+</body>
+</html>
