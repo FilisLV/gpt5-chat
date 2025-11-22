@@ -21,7 +21,7 @@
       border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.5);
       width: 100%;
-      max-width: 900px;
+      max-width: 960px;
       height: 90vh;
       display: flex;
       flex-direction: column;
@@ -30,10 +30,12 @@
     }
 
     .chat-header {
-      padding: 12px 16px;
+      padding: 10px 14px;
       border-bottom: 1px solid #1e293b;
       display: flex;
+      flex-wrap: wrap;
       justify-content: space-between;
+      gap: 8px;
       align-items: center;
       background: #020617;
     }
@@ -46,6 +48,43 @@
     .chat-header-status {
       font-size: 12px;
       color: #22c55e;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid #1e293b;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #9ca3af;
+      background: #020617;
+    }
+
+    select, input, textarea.settings-input {
+      background: #020617;
+      border-radius: 999px;
+      border: 1px solid #1e293b;
+      padding: 4px 8px;
+      color: #e5e7eb;
+      font-size: 12px;
+    }
+
+    select:focus, input:focus, textarea.settings-input:focus {
+      outline: none;
+      border-color: #4f46e5;
+    }
+
+    .settings-input {
+      border-radius: 8px;
+      width: 220px;
+      resize: vertical;
+      font-family: inherit;
     }
 
     .chat-messages {
@@ -65,7 +104,7 @@
     }
 
     .bubble {
-      max-width: 70%;
+      max-width: 72%;
       padding: 10px 12px;
       border-radius: 12px;
       font-size: 14px;
@@ -99,6 +138,7 @@
       display: flex;
       gap: 8px;
       align-items: flex-end;
+      flex-wrap: nowrap;
     }
 
     .chat-input-area textarea {
@@ -119,18 +159,22 @@
       border-color: #4f46e5;
     }
 
-    .send-btn {
-      padding: 8px 16px;
+    .send-btn, .secondary-btn {
+      padding: 8px 14px;
       border-radius: 999px;
       border: none;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
-      background: #4f46e5;
-      color: #e5e7eb;
       display: flex;
       align-items: center;
       gap: 6px;
+      white-space: nowrap;
+    }
+
+    .send-btn {
+      background: #4f46e5;
+      color: #e5e7eb;
     }
 
     .send-btn:disabled {
@@ -138,42 +182,34 @@
       cursor: not-allowed;
     }
 
-    .top-controls {
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      font-size: 12px;
-    }
-
-    .session-input {
+    .secondary-btn {
       background: #020617;
-      border-radius: 999px;
+      color: #9ca3af;
       border: 1px solid #1e293b;
-      padding: 4px 8px;
-      color: #e5e7eb;
-      font-size: 12px;
-      width: 140px;
     }
 
     .typing-indicator {
       font-size: 11px;
       color: #9ca3af;
-      padding: 0 16px 8px;
+      padding: 0 16px 6px;
       min-height: 16px;
     }
 
-    .pill {
-      border-radius: 999px;
-      border: 1px solid #1e293b;
-      padding: 2px 8px;
+    .auth-warning {
       font-size: 11px;
-      color: #9ca3af;
+      color: #f97316;
     }
 
-    @media (max-width: 600px) {
+    @media (max-width: 768px) {
       .chat-wrapper {
         height: 100vh;
         border-radius: 0;
+      }
+      .bubble {
+        max-width: 100%;
+      }
+      .settings-input {
+        width: 100%;
       }
     }
   </style>
@@ -185,14 +221,38 @@
         <div class="chat-header-title">My GPT-5 Chat</div>
         <div class="chat-header-status">● Online</div>
       </div>
-      <div class="top-controls">
-        <span class="pill">model: gpt-4o-mini</span>
+      <div class="controls-row">
+        <span class="pill">Session:</span>
         <input
           id="sessionId"
-          class="session-input"
           value="default"
-          title="Session ID – ļauj tev turpināt atsevišķas sarunas"
+          title="Session ID – ļauj turpināt vairākas paralēlas sarunas"
+          style="width: 110px;"
         />
+        <span class="pill">Model:</span>
+        <select id="modelSelect">
+          <option value="gpt-4o-mini">gpt-4o-mini</option>
+          <option value="gpt-4o">gpt-4o</option>
+        </select>
+        <span class="pill">Auth token:</span>
+        <input
+          id="authToken"
+          type="password"
+          placeholder="APP_AUTH_TOKEN"
+          style="width: 130px;"
+        />
+        <button class="secondary-btn" id="saveAuthBtn">Save</button>
+      </div>
+      <div class="controls-row" style="margin-top:4px;">
+        <span class="pill">System prompt:</span>
+        <textarea
+          id="systemPrompt"
+          class="settings-input"
+          rows="2"
+          placeholder="Describe how the assistant should behave"
+        >Tu esi bankas produktu speciālists, kas atbild latviešu valodā. Skadro lietas vienkārši, konkrēti un ar piemēriem.</textarea>
+        <button class="secondary-btn" id="clearChatBtn">Clear chat</button>
+        <span id="authInfo" class="auth-warning"></span>
       </div>
     </div>
 
@@ -205,7 +265,7 @@
         rows="1"
         placeholder="Uzdod savu jautājumu..."
       ></textarea>
-      <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+      <button id="sendBtn" class="send-btn">
         <span>Send</span>
         <span>➤</span>
       </button>
@@ -218,6 +278,43 @@
     const typingEl = document.getElementById("typing");
     const sendBtn = document.getElementById("sendBtn");
     const sessionInput = document.getElementById("sessionId");
+    const modelSelect = document.getElementById("modelSelect");
+    const systemPromptEl = document.getElementById("systemPrompt");
+    const authTokenEl = document.getElementById("authToken");
+    const saveAuthBtn = document.getElementById("saveAuthBtn");
+    const clearChatBtn = document.getElementById("clearChatBtn");
+    const authInfoEl = document.getElementById("authInfo");
+
+    const AUTH_KEY = "gpt5-chat-auth-token";
+
+    function loadAuthToken() {
+      const stored = localStorage.getItem(AUTH_KEY);
+      if (stored) {
+        authTokenEl.value = stored;
+        authInfoEl.textContent = "Token loaded from localStorage.";
+      } else {
+        authInfoEl.textContent = "If APP_AUTH_TOKEN is set on server, enter it here.";
+      }
+    }
+
+    function saveAuthToken() {
+      const val = authTokenEl.value.trim();
+      if (val) {
+        localStorage.setItem(AUTH_KEY, val);
+        authInfoEl.textContent = "Token saved.";
+      } else {
+        localStorage.removeItem(AUTH_KEY);
+        authInfoEl.textContent = "Token cleared.";
+      }
+    }
+
+    saveAuthBtn.addEventListener("click", saveAuthToken);
+
+    function getAuthHeader() {
+      const token = authTokenEl.value.trim();
+      if (!token) return {};
+      return { "x-auth-token": token };
+    }
 
     function appendMessage(role, text) {
       const row = document.createElement("div");
@@ -239,6 +336,12 @@
       messagesEl.appendChild(row);
 
       messagesEl.scrollTop = messagesEl.scrollHeight;
+
+      return { row, bubble, meta, body };
+    }
+
+    function clearMessages() {
+      messagesEl.innerHTML = "";
     }
 
     async function sendMessage() {
@@ -246,6 +349,9 @@
       if (!text) return;
 
       const sessionId = sessionInput.value.trim() || "default";
+      const model = modelSelect.value;
+      const systemPrompt = systemPromptEl.value.trim() ||
+        "You are a helpful assistant.";
 
       appendMessage("user", text);
       inputEl.value = "";
@@ -254,33 +360,76 @@
       sendBtn.disabled = true;
       typingEl.textContent = "Assistant is typing…";
 
+      // Izveido tukšu assistant burbuli, ko papildināsim ar streaming teksta gabaliem
+      const assistantMsg = appendMessage("assistant", "");
+      let assistantText = "";
+
       try {
-        const res = await fetch("/chat", {
+        const res = await fetch("/chat-stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+          },
           body: JSON.stringify({
             userMessage: text,
-            sessionId
-          })
+            sessionId,
+            model,
+            systemPrompt,
+          }),
         });
 
         if (!res.ok) {
           const errText = await res.text();
-          appendMessage("assistant", "Error from server: " + errText);
+          assistantMsg.body.textContent = "Error from server: " + errText;
           return;
         }
 
-        const data = await res.json();
-        appendMessage("assistant", data.reply || "(no reply)");
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          const chunk = decoder.decode(value, { stream: true });
+          assistantText += chunk;
+          assistantMsg.body.textContent = assistantText;
+          messagesEl.scrollTop = messagesEl.scrollHeight;
+        }
       } catch (err) {
         console.error(err);
-        appendMessage("assistant", "Network error: " + err.message);
+        assistantMsg.body.textContent = "Network error: " + err.message;
       } finally {
         sendBtn.disabled = false;
         typingEl.textContent = "";
         inputEl.focus();
       }
     }
+
+    // Clear chat poga – notīra UI un backend sesiju
+    async function clearChat() {
+      const sessionId = sessionInput.value.trim() || "default";
+      clearMessages();
+      typingEl.textContent = "";
+      try {
+        await fetch("/reset", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeader(),
+          },
+          body: JSON.stringify({ sessionId }),
+        });
+      } catch (e) {
+        console.error("Failed to reset session", e);
+      }
+      appendMessage(
+        "assistant",
+        "Saruna tika notīrīta šai session ID: " + sessionId
+      );
+    }
+
+    clearChatBtn.addEventListener("click", clearChat);
 
     // Enter = send, Shift+Enter = new line
     inputEl.addEventListener("keydown", (e) => {
@@ -296,8 +445,18 @@
       inputEl.style.height = inputEl.scrollHeight + "px";
     });
 
+    sendBtn.addEventListener("click", sendMessage);
+
     // Pirmais sveiciens
-    appendMessage("assistant", "Čau! Esmu tavs paša hostētais GPT čats. Uzdod jautājumu!");
+    function init() {
+      loadAuthToken();
+      appendMessage(
+        "assistant",
+        "Čau! Esmu tavs paša hostētais GPT čats ar streaming, modeļu izvēli, system prompt un Clear chat pogu. Uzdod jautājumu!"
+      );
+    }
+
+    init();
   </script>
 </body>
 </html>
