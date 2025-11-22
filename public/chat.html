@@ -1,100 +1,303 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="UTF-8" />
   <title>My GPT-5 Chat</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body { font-family: system-ui, Arial; margin: 0; background: #f7f7f7; }
-    .wrap { max-width: 800px; margin: 0 auto; padding: 20px; }
-    h1 { font-size: 20px; }
-    .row { display: flex; gap: 8px; }
-    textarea { flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #ccc; min-height: 60px; }
-    button { padding: 10px 14px; border-radius: 8px; border: 1px solid #ccc; background: #fff; cursor: pointer; }
-    .log { background: #fff; border: 1px solid #ddd; border-radius: 10px; padding: 12px; margin-top: 12px; white-space: pre-wrap; }
-    .msg { margin: 10px 0; padding: 10px 12px; border-radius: 10px; }
-    .user { background: #eef6ff; }
-    .assistant { background: #f3fff0; }
-    .small { font-size: 12px; opacity: .7; }
-    input[type=text] { width: 100%; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; }
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      background: #0f172a;
+      color: #e5e7eb;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    .chat-wrapper {
+      background: #020617;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      width: 100%;
+      max-width: 900px;
+      height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      border: 1px solid #1e293b;
+    }
+
+    .chat-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: #020617;
+    }
+
+    .chat-header-title {
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .chat-header-status {
+      font-size: 12px;
+      color: #22c55e;
+    }
+
+    .chat-messages {
+      flex: 1;
+      padding: 16px;
+      overflow-y: auto;
+      background: radial-gradient(circle at top, #1f2933 0, #020617 55%);
+    }
+
+    .message-row {
+      display: flex;
+      margin-bottom: 12px;
+    }
+
+    .message-row.user {
+      justify-content: flex-end;
+    }
+
+    .bubble {
+      max-width: 70%;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 14px;
+      line-height: 1.4;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+
+    .user .bubble {
+      background: #4f46e5;
+      color: #e5e7eb;
+      border-bottom-right-radius: 4px;
+    }
+
+    .assistant .bubble {
+      background: #0b1120;
+      border: 1px solid #1e293b;
+      border-bottom-left-radius: 4px;
+    }
+
+    .meta {
+      font-size: 11px;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+
+    .chat-input-area {
+      border-top: 1px solid #1e293b;
+      padding: 10px;
+      background: #020617;
+      display: flex;
+      gap: 8px;
+      align-items: flex-end;
+    }
+
+    .chat-input-area textarea {
+      flex: 1;
+      resize: none;
+      border-radius: 10px;
+      border: 1px solid #1e293b;
+      background: #020617;
+      color: #e5e7eb;
+      padding: 8px 10px;
+      font-family: inherit;
+      font-size: 14px;
+      max-height: 120px;
+    }
+
+    .chat-input-area textarea:focus {
+      outline: none;
+      border-color: #4f46e5;
+    }
+
+    .send-btn {
+      padding: 8px 16px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-size: 14px;
+      font-weight: 500;
+      background: #4f46e5;
+      color: #e5e7eb;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .top-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      font-size: 12px;
+    }
+
+    .session-input {
+      background: #020617;
+      border-radius: 999px;
+      border: 1px solid #1e293b;
+      padding: 4px 8px;
+      color: #e5e7eb;
+      font-size: 12px;
+      width: 140px;
+    }
+
+    .typing-indicator {
+      font-size: 11px;
+      color: #9ca3af;
+      padding: 0 16px 8px;
+      min-height: 16px;
+    }
+
+    .pill {
+      border-radius: 999px;
+      border: 1px solid #1e293b;
+      padding: 2px 8px;
+      font-size: 11px;
+      color: #9ca3af;
+    }
+
+    @media (max-width: 600px) {
+      .chat-wrapper {
+        height: 100vh;
+        border-radius: 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>My GPT-5 Chat</h1>
-
-    <!-- Set this to your backend:
-         - Local testing:   http://localhost:3000
-         - After Railway:   https://YOUR-APP.up.railway.app
-    -->
-    <label class="small">Backend URL</label>
-   <input id="backend" type="text" value="https://gpt5-chat-production.up.railway.app" />
-
-
-    <div class="log" id="chat"></div>
-
-    <div class="row" style="margin-top:12px;">
-      <textarea id="input" placeholder="Type a message… e.g., Tell me a joke!"></textarea>
-      <button id="send">Send</button>
+  <div class="chat-wrapper">
+    <div class="chat-header">
+      <div>
+        <div class="chat-header-title">My GPT-5 Chat</div>
+        <div class="chat-header-status">● Online</div>
+      </div>
+      <div class="top-controls">
+        <span class="pill">model: gpt-4o-mini</span>
+        <input
+          id="sessionId"
+          class="session-input"
+          value="default"
+          title="Session ID – ļauj tev turpināt atsevišķas sarunas"
+        />
+      </div>
     </div>
-    <div class="small" id="status"></div>
+
+    <div id="messages" class="chat-messages"></div>
+    <div id="typing" class="typing-indicator"></div>
+
+    <div class="chat-input-area">
+      <textarea
+        id="input"
+        rows="1"
+        placeholder="Uzdod savu jautājumu..."
+      ></textarea>
+      <button id="sendBtn" class="send-btn" onclick="sendMessage()">
+        <span>Send</span>
+        <span>➤</span>
+      </button>
+    </div>
   </div>
 
   <script>
-    const elChat = document.getElementById('chat');
-    const elSend = document.getElementById('send');
-    const elInput = document.getElementById('input');
-    const elBackend = document.getElementById('backend');
-    const elStatus = document.getElementById('status');
+    const messagesEl = document.getElementById("messages");
+    const inputEl = document.getElementById("input");
+    const typingEl = document.getElementById("typing");
+    const sendBtn = document.getElementById("sendBtn");
+    const sessionInput = document.getElementById("sessionId");
 
-    const sessionId = 'browser-demo';
+    function appendMessage(role, text) {
+      const row = document.createElement("div");
+      row.className = "message-row " + (role === "user" ? "user" : "assistant");
 
-    function add(role, text) {
-      const div = document.createElement('div');
-      div.className = `msg ${role}`;
-      div.textContent = (role === 'user' ? 'You: ' : 'GPT-5: ') + text;
-      elChat.appendChild(div);
-      elChat.scrollTop = elChat.scrollHeight;
+      const bubble = document.createElement("div");
+      bubble.className = "bubble";
+
+      const meta = document.createElement("div");
+      meta.className = "meta";
+      meta.textContent = role === "user" ? "You" : "Assistant";
+
+      const body = document.createElement("div");
+      body.textContent = text;
+
+      bubble.appendChild(meta);
+      bubble.appendChild(body);
+      row.appendChild(bubble);
+      messagesEl.appendChild(row);
+
+      messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
-    async function send() {
-      const msg = elInput.value.trim();
-      if (!msg) return;
-      elInput.value = '';
-      add('user', msg);
-      elStatus.textContent = 'Sending…';
+    async function sendMessage() {
+      const text = inputEl.value.trim();
+      if (!text) return;
+
+      const sessionId = sessionInput.value.trim() || "default";
+
+      appendMessage("user", text);
+      inputEl.value = "";
+      inputEl.style.height = "auto";
+
+      sendBtn.disabled = true;
+      typingEl.textContent = "Assistant is typing…";
 
       try {
-        const resp = await fetch(elBackend.value.replace(/\/$/, '') + '/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ sessionId, userMessage: msg })
+        const res = await fetch("/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            userMessage: text,
+            sessionId
+          })
         });
 
-        if (!resp.ok) {
-          const errText = await resp.text();
-          add('assistant', `Error ${resp.status}: ${errText}`);
-          elStatus.textContent = '';
+        if (!res.ok) {
+          const errText = await res.text();
+          appendMessage("assistant", "Error from server: " + errText);
           return;
         }
 
-        const data = await resp.json();
-        add('assistant', data.reply || '(no reply)');
-      } catch (e) {
-        add('assistant', 'Network error. Is the server running?');
-        console.error(e);
+        const data = await res.json();
+        appendMessage("assistant", data.reply || "(no reply)");
+      } catch (err) {
+        console.error(err);
+        appendMessage("assistant", "Network error: " + err.message);
       } finally {
-        elStatus.textContent = '';
+        sendBtn.disabled = false;
+        typingEl.textContent = "";
+        inputEl.focus();
       }
     }
 
-    elSend.addEventListener('click', send);
-    elInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+    // Enter = send, Shift+Enter = new line
+    inputEl.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        send();
+        sendMessage();
       }
     });
+
+    // Auto-resize textarea
+    inputEl.addEventListener("input", () => {
+      inputEl.style.height = "auto";
+      inputEl.style.height = inputEl.scrollHeight + "px";
+    });
+
+    // Pirmais sveiciens
+    appendMessage("assistant", "Čau! Esmu tavs paša hostētais GPT čats. Uzdod jautājumu!");
   </script>
 </body>
 </html>
